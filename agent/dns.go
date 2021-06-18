@@ -1899,9 +1899,13 @@ func (d *DNSServer) resolveCNAME(cfg *dnsConfig, name string, maxRecursionLevel 
 		resp := &dns.Msg{}
 
 		req.SetQuestion(name, dns.TypeANY)
-		// TODO: handle error response
-		d.dispatch(nil, req, resp, maxRecursionLevel-1)
 
+		err := d.dispatch(nil, req, resp, maxRecursionLevel-1)
+		rCode := rCodeFromError(err)
+		if rCode == dns.RcodeNameError || errors.Is(err, errNoAnswer) {
+			d.addSOA(cfg, resp)
+		}
+		resp.SetRcode(req, rCode)
 		return resp.Answer
 	}
 
