@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul/agent/connect"
-	"github.com/hashicorp/consul/agent/structs"
-	"github.com/hashicorp/consul/sdk/testutil/retry"
 	"github.com/hashicorp/go-hclog"
 	vaultapi "github.com/hashicorp/vault/api"
 	"github.com/stretchr/testify/require"
+
+	"github.com/hashicorp/consul/agent/connect"
+	"github.com/hashicorp/consul/agent/structs"
+	"github.com/hashicorp/consul/sdk/testutil/retry"
 )
 
 func TestVaultCAProvider_VaultTLSConfig(t *testing.T) {
@@ -491,7 +492,7 @@ func createVaultProvider(t *testing.T, isPrimary bool, addr, token string, rawCo
 		conf[k] = v
 	}
 
-	provider := NewVaultProvider()
+	provider := NewVaultProvider(hclog.New(nil))
 
 	cfg := ProviderConfig{
 		ClusterID:  connect.TestClusterID,
@@ -499,11 +500,6 @@ func createVaultProvider(t *testing.T, isPrimary bool, addr, token string, rawCo
 		IsPrimary:  true,
 		RawConfig:  conf,
 	}
-
-	logger := hclog.New(&hclog.LoggerOptions{
-		Output: ioutil.Discard,
-	})
-	provider.SetLogger(logger)
 
 	if !isPrimary {
 		cfg.IsPrimary = false

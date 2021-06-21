@@ -2,12 +2,10 @@ package consul
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"golang.org/x/time/rate"
 
-	"github.com/hashicorp/consul/agent/connect/ca"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/logging"
 )
@@ -46,28 +44,6 @@ func (s *Server) stopConnectLeader() {
 	s.caManager.Stop()
 	s.leaderRoutineManager.Stop(intentionMigrationRoutineName)
 	s.leaderRoutineManager.Stop(caRootPruningRoutineName)
-}
-
-// createProvider returns a connect CA provider from the given config.
-func (s *Server) createCAProvider(conf *structs.CAConfiguration) (ca.Provider, error) {
-	var p ca.Provider
-	switch conf.Provider {
-	case structs.ConsulCAProvider:
-		p = &ca.ConsulProvider{Delegate: &consulCADelegate{s}}
-	case structs.VaultCAProvider:
-		p = ca.NewVaultProvider()
-	case structs.AWSCAProvider:
-		p = &ca.AWSProvider{}
-	default:
-		return nil, fmt.Errorf("unknown CA provider %q", conf.Provider)
-	}
-
-	// If the provider implements NeedsLogger, we give it our logger.
-	if needsLogger, ok := p.(ca.NeedsLogger); ok {
-		needsLogger.SetLogger(s.logger)
-	}
-
-	return p, nil
 }
 
 func (s *Server) runCARootPruning(ctx context.Context) error {
