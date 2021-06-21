@@ -8,13 +8,14 @@ import (
 	"strings"
 	"sync"
 
+	memdb "github.com/hashicorp/go-memdb"
+	"golang.org/x/time/rate"
+
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/agent/connect/ca"
 	"github.com/hashicorp/consul/agent/consul/state"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/lib/semaphore"
-	memdb "github.com/hashicorp/go-memdb"
-	"golang.org/x/time/rate"
 )
 
 type connectSignRateLimiter struct {
@@ -131,6 +132,7 @@ func (s *Server) getCARoots(ws memdb.WatchSet, state *state.Store) (*structs.Ind
 	return indexedRoots, nil
 }
 
+// TODO: Move this off Server. This is only called by RPC endpoints.
 func (s *Server) SignCertificate(csr *x509.CertificateRequest, spiffeID connect.CertURI) (*structs.IssuedCert, error) {
 	provider, caRoot := s.caManager.getCAProvider()
 	if provider == nil {

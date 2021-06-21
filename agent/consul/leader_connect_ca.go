@@ -9,13 +9,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/go-hclog"
+	uuid "github.com/hashicorp/go-uuid"
+
 	"github.com/hashicorp/consul/agent/connect"
 	"github.com/hashicorp/consul/agent/connect/ca"
 	"github.com/hashicorp/consul/agent/consul/state"
 	"github.com/hashicorp/consul/agent/structs"
 	"github.com/hashicorp/consul/lib/routine"
-	"github.com/hashicorp/go-hclog"
-	uuid "github.com/hashicorp/go-uuid"
 )
 
 type caState string
@@ -270,6 +271,14 @@ func (c *CAManager) Stop() {
 	c.leaderRoutineManager.Stop(secondaryCARootWatchRoutineName)
 	c.leaderRoutineManager.Stop(intermediateCertRenewWatchRoutineName)
 	c.leaderRoutineManager.Stop(backgroundCAInitializationRoutineName)
+
+	if provider, _ := c.getCAProvider(); provider != nil {
+		if needsStop, ok := provider.(ca.NeedsStop); ok {
+			needsStop.Stop()
+		}
+	}
+	c.setCAProvider(nil, nil)
+	c.setState(caStateUninitialized, false)
 }
 
 func (c *CAManager) startPostInitializeRoutines(ctx context.Context) {
