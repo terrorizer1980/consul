@@ -1451,6 +1451,22 @@ func (c *CAManager) SignCertificate(csr *x509.CertificateRequest, spiffeID conne
 		defer c.caLeafLimiter.csrConcurrencyLimiter.Release()
 	}
 
+	// Append our local CA's intermediate if there is one.
+	inter, err := provider.ActiveIntermediate()
+	if err != nil {
+		return nil, err
+	}
+	root, err := provider.ActiveRoot()
+	if err != nil {
+		return nil, err
+	}
+
+	//check if the intermediate expired before using it to sign
+	err = checkExpired(inter)
+	if err != nil {
+		return nil, err
+	}
+
 	// All seems to be in order, actually sign it.
 	pem, err := provider.Sign(csr)
 	if err == ca.ErrRateLimited {
@@ -1463,16 +1479,6 @@ func (c *CAManager) SignCertificate(csr *x509.CertificateRequest, spiffeID conne
 	// Append any intermediates needed by this root.
 	for _, p := range caRoot.IntermediateCerts {
 		pem = strings.TrimSpace(pem) + "\n" + p
-	}
-
-	// Append our local CA's intermediate if there is one.
-	inter, err := provider.ActiveIntermediate()
-	if err != nil {
-		return nil, err
-	}
-	root, err := provider.ActiveRoot()
-	if err != nil {
-		return nil, err
 	}
 
 	if inter != root {
@@ -1510,4 +1516,18 @@ func (c *CAManager) SignCertificate(csr *x509.CertificateRequest, spiffeID conne
 	}
 
 	return &reply, nil
+}
+
+func checkExpired(pem string) error {
+	cert, err := connect.ParseCert(pem)
+	if err != nil {
+		return err
+	}
+	if cert.NotBefore.After(time.Now()) {
+		return fmt.Errorf("certificate start date is in the future %s", cert.NotBefore.String())
+	}
+	if cert.NotAfter.Before(time.Now()) {
+		return fmt.Errorf("certificate expired end date %s ", cert.NotAfter.String())
+	}
+	return nil
 }
